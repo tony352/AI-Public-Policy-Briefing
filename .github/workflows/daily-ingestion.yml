@@ -1,0 +1,58 @@
+name: Daily Public Policy Intelligence
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "15 7 * * *"
+      timezone: "Europe/London"
+
+
+permissions:
+  contents: read
+
+
+jobs:
+  daily-policy-briefing:
+    name: Run Public Policy Briefing
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 45
+
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+
+      - name: Run public policy pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python ingest/run_daily.py
+
+
+      - name: Send public policy briefing email
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DIGEST_RECIPIENTS: ${{ secrets.DIGEST_RECIPIENTS }}
+        run: |
+          python ingest/send_digest.py
